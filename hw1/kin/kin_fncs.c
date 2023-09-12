@@ -35,11 +35,12 @@ void print_matrix(double A[4][4]){
         }
         printf("\n"); // Move to the next row after printing each row
     }
+    printf("\n");
 }
 
 // this functin take in an angle (in radian), what axis the frame rotate about
 // and output the rotational matrix
-// utilize homogeneous transforms -> the matrixis 4x4
+// utilize homogeneous transforms -> the matrix is 4x4
 // Chat-GPT was used to generate part of the code
 void rotational_matrix(double angle, int axis, double matrix[4][4]){
     double c = cos(angle);
@@ -113,7 +114,7 @@ void mul_2_matrices(double A[4][4], double B[4][4], double res[4][4]){
 
 // based on the descripton of the robot
 // transformation function: 
-// Rz(theta0)Dz(l0)Ry(theta1)Dy(d1)Dx(l1)Ry(theta2)Dy(d2)Dx(l2)Ry(theta3)Dz(d4)Rx(theta4)Dx(l3)
+// Rz(theta0)Dz(l0)Ry(theta1)Dy(d1)Dx(l1)Ry(theta2)Dy(d2)Dx(l2)Ry(theta3)Dy(d3)Rx(theta4)Dz(d4)Dx(l3)
 fwd_kin(theta, x)
 // this is a pointer to an array of 6 angles (we only need to care the first 5)
 // the angle is in RADIAN
@@ -122,10 +123,11 @@ double *theta;
 double x[3]; 
 {   
     // type of operations
-    int operation[] = {R, L, R, D, L, R, D, L, R, D, R, L};
-    int axis[] = {z_axis, z_axis, y_axis, y_axis, x_axis, y_axis, y_axis, x_axis, y_axis, z_axis, x_axis, x_axis};
+    int operation[] = {R, L, R, D, L, R, D, L, R, D, D, R, L};
+    int axis[] = {z_axis, z_axis, y_axis, y_axis, x_axis, y_axis, y_axis, x_axis, y_axis, y_axis, z_axis, x_axis, x_axis};
     
     double T[4][4];
+    
     for(int i=0; i<4; i++){
         for(int j=0; j<4; j++){
             if (i==j){
@@ -141,7 +143,7 @@ double x[3];
     int p_link = 3;
     int p_offset = 4;
 
-    for (int p = 11; p>=0; p--){
+    for (int p = 12; p>=0; p--){
         double temp[4][4];
         if(operation[p] == R){
             rotational_matrix(theta[p_theta], axis[p], temp);
@@ -157,20 +159,22 @@ double x[3];
         }
         //print_matrix(temp);
         double res[4][4];
-        mul_2_matrices(T, temp, res);
+        mul_2_matrices(temp, T, res); // IMPORTANT: the order does matter;
+
+        // copy res to T
         for (int i=0; i<4; i++){
             for (int j=0; j<4; j++){
                 T[i][j] = res[i][j];
             }
         }
-        print_matrix(T);
+        //print_matrix(T);
     }
+    //printf("%d", p_offset);
 
     // assign x
     x[0] = T[0][3];
     x[1] = T[1][3];
     x[2] = T[2][3];
-
 }
 
 
