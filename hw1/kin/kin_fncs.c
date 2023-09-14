@@ -195,6 +195,12 @@ inv_kin(x, theta)
 double *x;
 double theta[6];
 {
+    double alpha;
+    double beta;
+    double gamma;
+    double nom; //nominator
+    double den; //denominator
+
     double px = x[0];
     double py = x[1];
     double pz = x[2];
@@ -203,64 +209,45 @@ double theta[6];
     theta[4] = 0.0;
     double phi = M_PI/2.0;
 
-    //reduce by computing the wrist position
-    // px = px - d[4];
-    // py = py - d[3];
-    // pz = pz + l[3];
+    // calculate theta[0]
+    alpha = atan2(py, px);
+    double r = sqrt(px*px + py*py);
+    beta = atan2(d1, sqrt(r*r - d[1]*d[1]));
+    
+    theta[0] =  alpha - beta;
 
-    // theta[0] = atan2(py,px);
-    double thetaA = atan2(x[1], x[0]);
-    double newX = sqrt(pow(x[0], 2) + pow(x[1], 2) - pow(d1, 2));
-    double thetaB = atan2(d1, newX);
 
-    theta[0] =  thetaA - thetaB;
-
-    px = px - d[4];
-    py = py - d[3];
+    // calcualte the wrist position
+    px = px + d[4]*sin(theta[0]) - d[3]*cos(theta[0]);
+    py = py - d[4]*cos(theta[0]) - d[3]*sin(theta[0]); 
     pz = pz + l[3];
 
-    //move base frame to join 1
+    // move base frame to join 1
     px = sqrt(px*px + py*py);
     py = 0;
-    pz = pz-l[0];
+    pz = pz - l[0];
 
-    // based on fomulars derived in class
-    theta[2] = acos((px*px + pz*pz - l[1]*l[1] - l[2]*l[2]) / (2*l[1]*l[2]));
-    
-    double gamma = atan2(pz,px);
-    double alpha = acos((l[1]*l[1] + px*px + pz*pz -l[2]*l[2]) / (2*l[1]*sqrt(px*px + pz*pz)));
-    
+    // calculate theta2 using the fomular derived in class
+    // notice this is now in x-z plane
+    nom = px*px + pz*pz - l[1]*l[1] - l[2]*l[2];
+    den = 2*l1*l2;
+    theta[2] = acos(nom/den);
+
+    //calculate theta1
+    gamma = atan2(pz,px);
+    nom = l[1]*l[1] + px*px + pz*pz -l[2]*l[2];
+    den = 2*l[1]*sqrt(px*px + pz*pz);
+    alpha = acos(nom/den);
     if(theta[2] > 0){
-        theta[1] = gamma-alpha;
-    }else{
-        theta[1] = gamma+alpha;
+        theta[1] = gamma + alpha;
     }
-    
+    else{
+        theta[1] = gamma - alpha;
+    }
+    theta[1] *= (-1); /// WHYYYYY is this? I don't know
+
+    //calcualte theta3
     theta[3] = phi - theta[1] - theta[2];
-
-    /*
-    double thetaA = atan2(x[1], x[0]);
-    double newX = sqrt(pow(x[0], 2) + pow(x[1], 2) - pow(d1, 2));
-    double thetaB = atan2(d1, newX);
-
-    theta[0] =  thetaA - thetaB;
-
-    double theta1X = x[0] + d1* sin(theta[0]) + d2 * cos(theta[0]);
-    double theta1Y = x[1] - d1* cos(theta[0]) + d2 * sin(theta[0]);
-    double theta1Z = x[2] + l3 - l0;
-    double hyp = sqrt(pow(theta1X, 2) + pow(theta1Y, 2) + pow(theta1Z, 2));
-    double den = (-2 * l1 * l2);
-    double rad = acos((pow(hyp,2) - pow(l1,2) - pow(l2,2)) / den);
-    double theta3Z = x[2] + l3 - l0;
-
-    thetaA = atan2(theta3Z, sqrt(pow(hyp,2)-pow(theta3Z,2)));
-    den = (-2 * l1 * hyp);
-    thetaB = acos((pow(l2, 2) - pow(l1, 2) - pow(hyp, 2)) / den);
-
-    theta[1] = (thetaA + thetaB) * -1;
-    theta[2] = M_PI - rad;
-    theta[3] = M_PI/2 - theta[2] - theta[1];
-    */
    
 }
 
