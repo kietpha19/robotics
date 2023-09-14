@@ -12,20 +12,20 @@ given information
 
 */
 
-int R = 0; //rotational
-int L = 1; //translational by the link
-int D = 2; //translational by the offset
+const int R = 0; //rotational
+const int L = 1; //translational by the link
+const int D = 2; //translational by the offset
 
-int x_axis = 0;
-int y_axis = 1;
-int z_axis = 2;
+const int x_axis = 0;
+const int y_axis = 1;
+const int z_axis = 2;
 
 // length of joints
-double l[4] = {0.25, 0.2, 0.2, 0.15};
+const double l[4] = {0.25, 0.2, 0.2, 0.15};
 
 // 1-idx array to hold the offset
 // index 0 is skiped to align with the problem's description
-double d[5] = {0, -0.04, 0.04, -0.04, -0.04};
+const double d[5] = {0, -0.04, 0.04, -0.04, -0.04};
 
 // for debugging
 void print_matrix(double A[4][4]){
@@ -171,17 +171,97 @@ double x[3];
     }
     //printf("%d", p_offset);
 
-    // assign x
+    // assign x, y, z
     x[0] = T[0][3];
     x[1] = T[1][3];
     x[2] = T[2][3];
 }
 
+//link lengths
+const double l0 = 0.25;
+const double l1 = 0.2;
+const double l2 = 0.2;
+const double l3 = 0.15;
+//offsets
+const double d1 = -0.04;
+const double d2 = 0.04;
+const double d3 = -0.04;
+const double d4 = -0.04;
 
+// for this function, based on the required orientation of the tool frame
+// theta4 = 0
+// phi = pi/2
 inv_kin(x, theta)
 double *x;
 double theta[6];
 {
+    double px = x[0];
+    double py = x[1];
+    double pz = x[2];
+
+    theta[5] = 0.0;
+    theta[4] = 0.0;
+    double phi = M_PI/2.0;
+
+    //reduce by computing the wrist position
+    // px = px - d[4];
+    // py = py - d[3];
+    // pz = pz + l[3];
+
+    // theta[0] = atan2(py,px);
+    double thetaA = atan2(x[1], x[0]);
+    double newX = sqrt(pow(x[0], 2) + pow(x[1], 2) - pow(d1, 2));
+    double thetaB = atan2(d1, newX);
+
+    theta[0] =  thetaA - thetaB;
+
+    px = px - d[4];
+    py = py - d[3];
+    pz = pz + l[3];
+
+    //move base frame to join 1
+    px = sqrt(px*px + py*py);
+    py = 0;
+    pz = pz-l[0];
+
+    // based on fomulars derived in class
+    theta[2] = acos((px*px + pz*pz - l[1]*l[1] - l[2]*l[2]) / (2*l[1]*l[2]));
+    
+    double gamma = atan2(pz,px);
+    double alpha = acos((l[1]*l[1] + px*px + pz*pz -l[2]*l[2]) / (2*l[1]*sqrt(px*px + pz*pz)));
+    
+    if(theta[2] > 0){
+        theta[1] = gamma-alpha;
+    }else{
+        theta[1] = gamma+alpha;
+    }
+    
+    theta[3] = phi - theta[1] - theta[2];
+
+    /*
+    double thetaA = atan2(x[1], x[0]);
+    double newX = sqrt(pow(x[0], 2) + pow(x[1], 2) - pow(d1, 2));
+    double thetaB = atan2(d1, newX);
+
+    theta[0] =  thetaA - thetaB;
+
+    double theta1X = x[0] + d1* sin(theta[0]) + d2 * cos(theta[0]);
+    double theta1Y = x[1] - d1* cos(theta[0]) + d2 * sin(theta[0]);
+    double theta1Z = x[2] + l3 - l0;
+    double hyp = sqrt(pow(theta1X, 2) + pow(theta1Y, 2) + pow(theta1Z, 2));
+    double den = (-2 * l1 * l2);
+    double rad = acos((pow(hyp,2) - pow(l1,2) - pow(l2,2)) / den);
+    double theta3Z = x[2] + l3 - l0;
+
+    thetaA = atan2(theta3Z, sqrt(pow(hyp,2)-pow(theta3Z,2)));
+    den = (-2 * l1 * hyp);
+    thetaB = acos((pow(l2, 2) - pow(l1, 2) - pow(hyp, 2)) / den);
+
+    theta[1] = (thetaA + thetaB) * -1;
+    theta[2] = M_PI - rad;
+    theta[3] = M_PI/2 - theta[2] - theta[1];
+    */
+   
 }
 
 
