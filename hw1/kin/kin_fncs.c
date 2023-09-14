@@ -244,11 +244,15 @@ double theta[6];
     else{
         theta[1] = gamma - alpha;
     }
+
     theta[1] *= (-1); /// WHYYYYY is this? I don't know
+    // I see why now, because positive y-axis is pointing inward the screen
+    // unlike the lecture slide, the positive z-axis is pointing outward
+    // WHY MAKE THIS ASSIGNMENT SO COMPLICATED
+    // TOOK ME 4-HOURS SLEEP ONLY DAYSSSSSS
 
     //calcualte theta3
     theta[3] = phi - theta[1] - theta[2];
-   
 }
 
 
