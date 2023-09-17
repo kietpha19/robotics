@@ -177,17 +177,6 @@ double x[3];
     x[2] = T[2][3];
 }
 
-//link lengths
-const double l0 = 0.25;
-const double l1 = 0.2;
-const double l2 = 0.2;
-const double l3 = 0.15;
-//offsets
-const double d1 = -0.04;
-const double d2 = 0.04;
-const double d3 = -0.04;
-const double d4 = -0.04;
-
 // for this function, based on the required orientation of the tool frame
 // theta4 = 0
 // phi = pi/2
@@ -212,7 +201,7 @@ double theta[6];
     // calculate theta[0]
     alpha = atan2(py, px);
     double r = sqrt(px*px + py*py);
-    beta = atan2(d1, sqrt(r*r - d[1]*d[1]));
+    beta = atan2(d[1], sqrt(r*r - d[1]*d[1]));
     
     theta[0] =  alpha - beta;
 
@@ -230,7 +219,7 @@ double theta[6];
     // calculate theta2 using the fomular derived in class
     // notice this is now in x-z plane
     nom = px*px + pz*pz - l[1]*l[1] - l[2]*l[2];
-    den = 2*l1*l2;
+    den = 2*l[1]*l[2];
     theta[2] = acos(nom/den);
 
     //calculate theta1
