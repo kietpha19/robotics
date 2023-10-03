@@ -1,253 +1,214 @@
+// Include neccessary libraries
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
+// Define constants
 #ifndef M_PI
 #define M_PI 3.1415927
 #endif
 
-/*
-given information
-- l0 = 0.25, l1 = 0.2, l2 = 0.2, l3 = 0.15
-- d1 = -0.04, d2 = 0.04, d3 = -0.04, d3 = -0.04 (d1 is between joint 1 and 2, etc)
+#ifndef MATRIX_DIM
+#define MATRIX_DIM 4
+#endif
 
-*/
 
-const int R = 0; //rotational
-const int L = 1; //translational by the link
-const int D = 2; //translational by the offset
-
-const int x_axis = 0;
-const int y_axis = 1;
-const int z_axis = 2;
-
-// length of joints
-const double l[4] = {0.25, 0.2, 0.2, 0.15};
-
-// 1-idx array to hold the offset
-// index 0 is skiped to align with the problem's description
-const double d[5] = {0, -0.04, 0.04, -0.04, -0.04};
-
-// for debugging
-void print_matrix(double A[4][4]){
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            printf("%.4lf\t", A[i][j]); // You can adjust the format specifier as needed
-        }
-        printf("\n"); // Move to the next row after printing each row
-    }
-    printf("\n");
-}
-
-// this functin take in an angle (in radian), what axis the frame rotate about
-// and output the rotational matrix
-// utilize homogeneous transforms -> the matrix is 4x4
-// Chat-GPT was used to generate part of the code
-void rotational_matrix(double angle, int axis, double matrix[4][4]){
-    double c = cos(angle);
-    double s = sin(angle);
-
-    // Initialize the matrix as an identity matrix
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            if (i == j) {
-                matrix[i][j] = 1.0;
-            } else {
-                matrix[i][j] = 0.0;
-            }
-        }
-    }
+// Function initialize origin coordinates in form of homogeneous
+double** init_homogeneous_origin(int rows, int cols) {
     
-    switch (axis) {
-        case 0:  // Rotate about the X-axis
-            matrix[1][1] = c;
-            matrix[1][2] = -s;
-            matrix[2][1] = s;
-            matrix[2][2] = c;
-            break;
-        case 1:  // Rotate about the Y-axis
-            matrix[0][0] = c;
-            matrix[0][2] = s;
-            matrix[2][0] = -s;
-            matrix[2][2] = c;
-            break;
-        case 2:  // Rotate about the Z-axis
-            matrix[0][0] = c;
-            matrix[0][1] = -s;
-            matrix[1][0] = s;
-            matrix[1][1] = c;
-            break;
-        default:
-            printf("Invalid axis. Please use 0 (X-axis), 1 (Y-axis), or 2 (Z-axis).\n");
+    double** origin = (double**)malloc(rows * sizeof(double*));
+    
+    if (origin == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
     }
+
+    for (int i = 0; i < rows; i++) {
+        origin[i] = (double*)malloc(cols * sizeof(double));
+        if (origin[i] == NULL) {
+            fprintf(stderr, "Memory allocation failed\n");
+            exit(1);
+        }
+    }
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (i < rows - 1) {
+                origin[i][j] = 0;
+            } else origin[i][j] = 1;
+        }
+    }
+
+    return origin;
 }
 
-void translational_matrix(double length, int axis, double matrix[4][4]){
-    //printf("%f\n", length);
-    // Initialize the matrix as an identity matrix
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            if (i == j) {
-                matrix[i][j] = 1.0;
-            } else {
-                matrix[i][j] = 0.0;
+
+// Function to create and return a dynamically allocated 2D matrix
+double** T_mat(double rot_angle, int dim, double trans_x, double trans_y, double trans_z, char rot_axis) {
+    
+    double** mat = (double**)malloc(dim * sizeof(double*));
+
+    if (mat == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
+    }
+
+    for (int i = 0; i < dim; i++) {
+        mat[i] = (double*)malloc(dim * sizeof(double));
+        if (mat[i] == NULL) {
+            fprintf(stderr, "Memory allocation failed\n");
+            exit(1);
+        }
+    }
+
+    // Fill in matrix based on its rotation matrix
+    if (rot_axis == 'x') {
+        mat[0][0] = 1, mat[0][1] = 0,              mat[0][2] = 0,               mat[0][3] = trans_x;
+        mat[1][0] = 0, mat[1][1] = cos(rot_angle), mat[1][2] = -sin(rot_angle), mat[1][3] = trans_y;
+        mat[2][0] = 0, mat[2][1] = sin(rot_angle), mat[2][2] = cos(rot_angle),  mat[2][3] = trans_z;
+        mat[3][0] = 0, mat[3][1] = 0,              mat[3][2] = 0,               mat[3][3] = 1;
+
+    } else if (rot_axis == 'y') {
+        mat[0][0] = cos(rot_angle),  mat[0][1] = 0, mat[0][2] = sin(rot_angle), mat[0][3] = trans_x;
+        mat[1][0] = 0,               mat[1][1] = 1, mat[1][2] = 0,              mat[1][3] = trans_y;
+        mat[2][0] = -sin(rot_angle), mat[2][1] = 0, mat[2][2] = cos(rot_angle), mat[2][3] = trans_z;
+        mat[3][0] = 0,               mat[3][1] = 0, mat[3][2] = 0,               mat[3][3] = 1;
+
+    } else if (rot_axis == 'z') {
+        mat[0][0] = cos(rot_angle), mat[0][1] = -sin(rot_angle), mat[0][2] = 0, mat[0][3] = trans_x;
+        mat[1][0] = sin(rot_angle), mat[1][1] = cos(rot_angle),  mat[1][2] = 0, mat[1][3] = trans_y;
+        mat[2][0] = 0,              mat[2][1] = 0,               mat[2][2] = 1, mat[2][3] = trans_z;
+        mat[3][0] = 0,              mat[3][1] = 0,               mat[3][2] = 0, mat[3][3] = 1;
+
+    } else {
+        printf("Invalid choice!\n");
+    }
+
+    return mat;
+}
+
+
+// Function to perform matrix multiplication
+double** multiply(double** mat1, double** mat2, int dim, char choice) {
+    
+    int res_dim;
+    if (choice == 'm') {
+        res_dim = 4;
+    } else if (choice == 'p') {
+        res_dim = 1;
+    }
+
+    double** res_mat = (double**)malloc(dim * sizeof(double*));
+    for (int i = 0; i < dim; i++) {
+        res_mat[i] = (double*)malloc(res_dim * sizeof(double));
+    }
+
+    for (int i = 0; i < dim; i++) {
+        for (int j = 0; j < res_dim; j++) {
+            res_mat[i][j] = 0;
+            for (int k = 0; k < dim; k++) {
+                res_mat[i][j] += mat1[i][k] * mat2[k][j];
             }
         }
     }
 
-    // set the P vector, it's located at the last col
-    matrix[axis][3] = length;
-    //print_matrix(matrix);
+    return res_mat;
 }
 
-// this function multiply two (4x4) matrices
-// utilized chat-GPT for saving time purpose
-void mul_2_matrices(double A[4][4], double B[4][4], double res[4][4]){
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            res[i][j] = 0.0;
-            for (int k = 0; k < 4; k++) {
-                res[i][j] += A[i][k] * B[k][j];
-            }
+
+// Function to print matrix
+void print_mat(double** mat, int dim, char choice) {
+
+    int cols;
+    if (choice == 'm') {
+        cols = 4;
+    } else if (choice == 'p') {
+        cols = 1;
+    }
+
+    for (int i = 0; i < dim; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%.2f ", mat[i][j]);
         }
+        printf("\n");
     }
 }
 
-// based on the descripton of the robot
-// transformation function: 
-// Rz(theta0)Dz(l0)Ry(theta1)Dy(d1)Dx(l1)Ry(theta2)Dy(d2)Dx(l2)Ry(theta3)Dy(d3)Rx(theta4)Dz(d4)Dx(l3)
+
+// Function to free a dynamically allocated matrix
+void free_mat(double** mat, int dim) {
+    for (int i = 0; i < dim; i++) {
+        free(mat[i]);
+    }
+    free(mat);
+}
+
+
+// Function of forward kinematics 
 fwd_kin(theta, x)
-// this is a pointer to an array of 6 angles (we only need to care the first 5)
-// the angle is in RADIAN
-double *theta; 
-// the function should output vector position, given the set of angles
-double x[3]; 
+double *theta;
+double x[3];
 {   
-    // type of operations
-    int operation[] = {R, L, R, D, L, R, D, L, R, D, D, R, L};
-    int axis[] = {z_axis, z_axis, y_axis, y_axis, x_axis, y_axis, y_axis, x_axis, y_axis, y_axis, z_axis, x_axis, x_axis};
-    
-    double T[4][4];
-    
-    for(int i=0; i<4; i++){
-        for(int j=0; j<4; j++){
-            if (i==j){
-                T[i][j] = 1.0;
-            }
-            else{
-                T[i][j] = 0.0;
-            }  
-        }
-    }
-    
-    int p_theta = 4;
-    int p_link = 3;
-    int p_offset = 4;
 
-    for (int p = 12; p>=0; p--){
-        double temp[4][4];
-        if(operation[p] == R){
-            rotational_matrix(theta[p_theta], axis[p], temp);
-            p_theta -=1;
-        }
-        else if (operation[p] == L){
-            translational_matrix(l[p_link], axis[p], temp);
-            p_link -=1;
-        }
-        else{
-            translational_matrix(d[p_offset], axis[p], temp);
-            p_offset -=1;
-        }
-        //print_matrix(temp);
-        double res[4][4];
-        mul_2_matrices(temp, T, res); // IMPORTANT: the order does matter;
+    // Robot frame lengths
+    float l_0 = 0.25, l_1 = 0.20, l_2 = 0.20, l_3 = 0.15;
+    float d_1 = -0.04, d_2 = 0.04, d_3 = -0.04, d_4 = -0.04; 
 
-        // copy res to T
-        for (int i=0; i<4; i++){
-            for (int j=0; j<4; j++){
-                T[i][j] = res[i][j];
-            }
-        }
-        //print_matrix(T);
-    }
-    //printf("%d", p_offset);
+    double** org_coords = init_homogeneous_origin(MATRIX_DIM, 1);
+    double** trans_mat_B1 = T_mat(theta[0], MATRIX_DIM, 0, 0, l_0, 'z');
+    double** trans_mat_12 = T_mat(theta[1], MATRIX_DIM, l_1, d_1, 0, 'y');
+    double** trans_mat_23 = T_mat(theta[2], MATRIX_DIM, l_2, d_2, 0, 'y');
+    double** trans_mat_3T = T_mat(theta[3], MATRIX_DIM, l_3, d_3, d_4, 'y');
 
-    // assign x, y, z
-    x[0] = T[0][3];
-    x[1] = T[1][3];
-    x[2] = T[2][3];
+    double** end_coords1 = multiply(trans_mat_B1, org_coords, MATRIX_DIM, 'p');
+    double** end_coords2 = multiply(trans_mat_12, end_coords1, MATRIX_DIM, 'p');
+    double** end_coords3 = multiply(trans_mat_23, end_coords2, MATRIX_DIM, 'p');
+    double** end_coords = multiply(trans_mat_3T, end_coords3, MATRIX_DIM, 'p');
+
+    x[0] = end_coords[0][0];
+    x[1] = end_coords[1][0];
+    x[2] = end_coords[2][0];
+
 }
 
-// for this function, based on the required orientation of the tool frame
-// theta4 = 0
-// phi = pi/2
+
 inv_kin(x, theta)
 double *x;
 double theta[6];
 {
-    double alpha;
-    double beta;
-    double gamma;
-    double nom; //nominator
-    double den; //denominator
 
-    double px = x[0];
-    double py = x[1];
-    double pz = x[2];
+    // Robot frame lengths
+    float l_0 = 0.25, l_1 = 0.20, l_2 = 0.20, l_3 = 0.15;
+    float d_1 = -0.04, d_2 = 0.04, d_3 = -0.04, d_4 = -0.04; 
 
-    theta[5] = 0.0;
-    theta[4] = 0.0;
-    double phi = M_PI/2.0;
+    // Removing frame (34) and re-calculate x_prime, y_prime, z_prime
+    float x_prime = x[0] - l_3, y_prime = x[1] - d_3, z_prime = x[2] - d_4;
 
-    // calculate theta[0]
-    alpha = atan2(py, px);
-    double r = sqrt(px*px + py*py);
-    beta = atan2(d[1], sqrt(r*r - d[1]*d[1]));
-    
-    theta[0] =  alpha - beta;
+    // Compute theta 0
+    theta[0] = atan2(y_prime, x_prime);
 
+    // Romving framme (01) and re-calculate x_prime_prime, y_prime_prime, z_prime_prime  
+    float x_prime_prime = sqrt(pow(x_prime, 2) + pow(y_prime, 2)), y_prime_prime = 0, z_prime_prime = z_prime - l_0;
 
-    // calcualte the wrist position
-    px = px + d[4]*sin(theta[0]) - d[3]*cos(theta[0]);
-    py = py - d[4]*cos(theta[0]) - d[3]*sin(theta[0]); 
-    pz = pz + l[3];
+    // Compute theta 2
+    theta[2] = acos((pow(x_prime_prime, 2) + pow(y_prime_prime, 2) - pow(l_1, 2) - pow(l_2, 2))/2*l_1*l_2);
 
-    // move base frame to join 1
-    px = sqrt(px*px + py*py);
-    py = 0;
-    pz = pz - l[0];
+    // Compute alpha and gamma
+    double alpha = acos((pow(l_1, 2) - pow(l_2, 2) + pow(x_prime_prime, 2) + pow(y_prime_prime, 2))/(2*l_1*sqrt(pow(x_prime_prime, 2) + pow(y_prime_prime, 2))));
+    double gamma = atan2(y_prime_prime, x_prime_prime);
 
-    // calculate theta2 using the fomular derived in class
-    // notice this is now in x-z plane
-    nom = px*px + pz*pz - l[1]*l[1] - l[2]*l[2];
-    den = 2*l[1]*l[2];
-    theta[2] = acos(nom/den);
-
-    //calculate theta1
-    gamma = atan2(pz,px);
-    nom = l[1]*l[1] + px*px + pz*pz -l[2]*l[2];
-    den = 2*l[1]*sqrt(px*px + pz*pz);
-    alpha = acos(nom/den);
-    if(theta[2] > 0){
+    // Compute theta 1 based on sign on theta 2
+    if (theta[2] >= 0) {
+        theta[1] = gamma - alpha;
+    } else {
         theta[1] = gamma + alpha;
     }
-    else{
-        theta[1] = gamma - alpha;
-    }
 
-    theta[1] *= (-1); /// WHYYYYY is this? I don't know
-    // I see why now, because positive y-axis is pointing inward the screen
-    // unlike the lecture slide, the positive z-axis is pointing outward
-    // WHY MAKE THIS ASSIGNMENT SO COMPLICATED
-    // TOOK ME 4-HOURS SLEEP ONLY DAYSSSSSS
+    // Compute theta 3
+    //double theta;
+    theta[3] = atan2(0, 1) - theta[1] - theta[2]; 
+    
+    // Theta 4 does not matter so set it as 0
+    theta[4] = 0;
 
-    //calcualte theta3
-    theta[3] = phi - theta[1] - theta[2];
 }
-
-
-
-
-
-
-
-
