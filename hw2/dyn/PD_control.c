@@ -27,7 +27,7 @@ see Hand-down for visualize
 double experiment_gravity(double theta, double theta_ref){
   double torque = 10.0*(theta_ref-theta);
   double rmg = torque/cos(theta);
-  printf("%f\n", rmg);
+  printf("rmg = %f\n", rmg);
   return torque;
 }
 
@@ -45,13 +45,14 @@ our task is find the b:
                               however, dangerous in practice)
   2) print out: b = torque/theta_dot
   3) record b until it's stable (when system reach constant velocity)
+  4) return constant_torque + gravity 
   
 */
-double experiment_friction(double theta_dot){
+double experiment_friction(double theta_dot, double gravity){
   double constant_torque = 300.0;
   double b = constant_torque/theta_dot;
-  printf("%f\n", b);
-  return constant_torque;
+  printf("b = %f\n", b);
+  return constant_torque + gravity;
 }
 
 /*
@@ -68,16 +69,16 @@ our task is find the inertial:
  3) take the average
 */
 double prev_theta_dot = 0; //previous velocity
-double experiment_inertial(double theta_dot){
-  double constant_torque = 500.0;
+double experiment_inertial(double theta_dot, double gravity, double friction){
+  double constant_torque = 300.0;
   // the PD_control() was called at rate of 50Hz -> delta_time = 1/50
   double delta_time = 1.0/50;
   double theta_dot_dot = (theta_dot-prev_theta_dot)/delta_time;
   double inertial = constant_torque/theta_dot_dot;
-  printf("%f\n", inertial);
+  printf("I = %f\n", inertial);
 
   prev_theta_dot = theta_dot; //updating previous velocity
-  return constant_torque;
+  return constant_torque + gravity + friction;
 }
 
 // this function should return the amount of torqe want to apply for the dynamic system
@@ -92,24 +93,29 @@ double theta, theta_dot, theta_ref, theta_dot_ref;
   // ------------- 1 ------------------------------
   //torque = experiment_gravity(theta, theta_ref);
   double rmg = 4.96082;
+  double gravity = rmg*cos(theta);
   // ----------------------------------------------
   
   //---------------- 2 ----------------------------
-  //torque = experiment_friction(theta_dot); 
+  //torque = experiment_friction(theta_dot, gravity); 
   double b = 0.1856;
+  double friction = b*theta_dot;
   // ----------------------------------------------
 
   //--------------- 3 -----------------------------
-  //torque = experiment_inertial(theta_dot);
-  double inertial = 1.115; // average
+  //torque = experiment_inertial(theta_dot, gravity, friction);
+  double inertial = 1.0;
+  double theta_dot_dot = (theta_dot - prev_theta_dot); // ?? delta time
+  prev_theta_dot = theta_dot;
+  double I_force = inertial*theta_dot_dot;
+  //printf("%f\n", theta_dot_dot);
   //-----------------------------------------------
 
 
   // PD controller implementation - extra credit
-  double theta_dot_dot = theta_dot - prev_theta_dot;
-  double compensate = inertial*theta_dot_dot + b*theta_dot + rmg*cos(theta);
+  double compensate = I_force + friction + gravity;
 
-  double kp = 1.0; //this one is adjustable to make the system move faster
+  double kp = 10.0; //this one is adjustable to make the system move faster
   double kd = 2*sqrt(kp);
   double PD = kp*(theta_ref-theta) + kd*(theta_dot_ref-theta_dot);
 
