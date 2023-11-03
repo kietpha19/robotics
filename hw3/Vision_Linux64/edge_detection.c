@@ -137,7 +137,7 @@ unsigned char image[DIM][DIM];
 int size[2];
 unsigned char proc_img[DIM][DIM];
 {
-    edge_detection(image, size[0], size[1], proc_img, 4);
+    edge_detection(image, size[0], size[1], proc_img, 2);
 }
 
 
